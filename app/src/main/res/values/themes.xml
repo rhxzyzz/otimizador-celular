@@ -6,4 +6,9 @@
         <item name="android:statusBarColor">@color/primary_dark</item>
         <item name="android:windowBackground">@color/background</item>
     </style>
+
+    <style name="Theme.Splash" parent="Theme.OtimizadorCelular">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+    </style>
 </resources>
