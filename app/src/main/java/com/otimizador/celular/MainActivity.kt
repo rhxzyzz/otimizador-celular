@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import java.util.Locale
@@ -28,12 +29,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var barraModoLimpeza: LinearLayout
     private lateinit var btnModoJogo: MaterialButton
 
-    // Estado do modo de limpeza de cache assistida
     private var modoLimpezaCache = false
     private var ultimoPacoteAberto: String? = null
     private val appsLimpos = mutableSetOf<String>()
 
-    // Estado do Modo Jogo
     private var modoJogoAtivo = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,8 +86,6 @@ class MainActivity : AppCompatActivity() {
         atualizarInfoRam()
         atualizarInfoArmazenamento()
 
-        // Se voltamos de uma tela de detalhes de app durante o modo de limpeza,
-        // marcamos aquele app como "limpo" na lista.
         if (modoLimpezaCache && ultimoPacoteAberto != null) {
             appsLimpos.add(ultimoPacoteAberto!!)
             ultimoPacoteAberto = null
@@ -98,7 +95,6 @@ class MainActivity : AppCompatActivity() {
         atualizarEstadoModoJogo()
     }
 
-    /** Mostra quanta RAM está livre/usada no aparelho (leitura, sem forçar nada). */
     private fun atualizarInfoRam() {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val info = ActivityManager.MemoryInfo()
@@ -117,7 +113,6 @@ class MainActivity : AppCompatActivity() {
         progressRam.progress = percentualUsado
     }
 
-    /** Mostra o uso de armazenamento interno do aparelho. */
     private fun atualizarInfoArmazenamento() {
         val stat = StatFs(filesDir.path)
         val totalBytes = stat.totalBytes
@@ -140,10 +135,6 @@ class MainActivity : AppCompatActivity() {
         return String.format(Locale.getDefault(), "%.1f GB", gb)
     }
 
-    /**
-     * Limpa o cache do PRÓPRIO app. Este é o único tipo de limpeza de cache
-     * que um app comum tem permissão de fazer diretamente no Android.
-     */
     private fun limparCacheDoApp() {
         try {
             cacheDir.deleteRecursively()
@@ -154,12 +145,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * O Android não permite que um app comum limpe o cache de outros apps
-     * automaticamente. Este modo guia o usuário: ele toca em cada app da lista,
-     * o sistema abre a tela nativa "Armazenamento e cache" daquele app, o usuário
-     * toca em "Limpar cache" manualmente, e volta para continuar com o próximo.
-     */
     private fun iniciarModoLimpezaCache() {
         modoLimpezaCache = true
         appsLimpos.clear()
@@ -181,13 +166,6 @@ class MainActivity : AppCompatActivity() {
         carregarListaDeApps()
     }
 
-    /**
-     * Fecha processos em segundo plano de outros apps usando a API oficial
-     * killBackgroundProcesses(). Funciona de verdade, mas o próprio Android
-     * já faz esse gerenciamento sozinho e de forma mais eficiente — usar isso
-     * com frequência pode até piorar a bateria, pois os apps precisam reabrir
-     * do zero depois.
-     */
     private fun fecharAppsEmSegundoPlano(mostrarToast: Boolean) {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val pm = packageManager
@@ -201,7 +179,6 @@ class MainActivity : AppCompatActivity() {
             try {
                 am.killBackgroundProcesses(app.packageName)
             } catch (e: Exception) {
-                // Alguns apps do sistema não podem ser fechados; ignoramos e seguimos
             }
         }
 
@@ -211,18 +188,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Ativa/desativa o Modo Jogo: usa a permissão "Não perturbe" do Android
-     * para bloquear notificações enquanto ativado, e libera RAM fechando
-     * apps em segundo plano ao ativar.
-     */
     private fun alternarModoJogo() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (!nm.isNotificationPolicyAccessGranted) {
             Toast.makeText(
                 this,
-                "Autorize o acesso ao 'Não perturbe' na tela que vai abrir para usar o Modo Jogo",
+                "Autorize o acesso ao 'Não perturbe' na tela que vai abrir para usar o Boost de Jogos",
                 Toast.LENGTH_LONG
             ).show()
             startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
@@ -232,15 +204,39 @@ class MainActivity : AppCompatActivity() {
         modoJogoAtivo = !modoJogoAtivo
 
         if (modoJogoAtivo) {
+            val ramAntesMb = obterRamDisponivelMb()
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
             fecharAppsEmSegundoPlano(mostrarToast = false)
-            Toast.makeText(this, "Modo Jogo ativado: notificações bloqueadas", Toast.LENGTH_SHORT).show()
+            val ramDepoisMb = obterRamDisponivelMb()
+            val liberadoMb = (ramDepoisMb - ramAntesMb).coerceAtLeast(0)
+            mostrarResultadoBoost(ramAntesMb, ramDepoisMb, liberadoMb)
         } else {
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-            Toast.makeText(this, "Modo Jogo desativado: notificações normais", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Boost desativado: notificações normais", Toast.LENGTH_SHORT).show()
         }
 
         atualizarEstadoModoJogo()
+    }
+
+    private fun obterRamDisponivelMb(): Long {
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.availMem / (1024 * 1024)
+    }
+
+    private fun mostrarResultadoBoost(antesMb: Long, depoisMb: Long, liberadoMb: Long) {
+        AlertDialog.Builder(this)
+            .setTitle("🚀 Boost de Jogos ativado")
+            .setMessage(
+                "RAM livre antes: $antesMb MB\n" +
+                    "RAM livre agora: $depoisMb MB\n" +
+                    "Aproximadamente $liberadoMb MB liberados.\n\n" +
+                    "Notificações ficam bloqueadas até você desativar o Boost."
+            )
+            .setPositiveButton("Entendi", null)
+            .setCancelable(true)
+            .show()
     }
 
     private fun atualizarEstadoModoJogo() {
@@ -249,16 +245,12 @@ class MainActivity : AppCompatActivity() {
             nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
         modoJogoAtivo = ativoDeVerdade
         btnModoJogo.text = if (modoJogoAtivo) {
-            "Desativar Modo Jogo"
+            "Desativar Boost de Jogos"
         } else {
-            "Ativar Modo Jogo (bloquear notificações)"
+            "Ativar Boost de Jogos"
         }
     }
 
-    /**
-     * Abre a tela do sistema com os apps recentes / em segundo plano,
-     * onde o próprio Android permite ao usuário fechar apps manualmente.
-     */
     private fun abrirTelaAppsEmSegundoPlano() {
         try {
             val intent = Intent(Intent.ACTION_MAIN)
@@ -281,11 +273,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Lista os apps instalados no aparelho. Ao tocar em um item,
-     * abre a tela "Sobre o app" do sistema, onde o usuário pode
-     * forçar parada, limpar cache/dados ou desinstalar manualmente.
-     */
     private fun carregarListaDeApps() {
         containerApps.removeAllViews()
 
@@ -330,7 +317,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Abre a tela nativa "Sobre o app" (Forçar parada / Limpar dados / Desinstalar). */
     private fun abrirDetalhesDoApp(packageName: String) {
         try {
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
