@@ -1,8 +1,5 @@
 package com.otimizador.celular
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -20,6 +17,12 @@ import kotlin.random.Random
  * Desenha uma animação de partículas sendo puxadas para um buraco negro
  * central, usado como efeito visual da tela de abertura do app.
  * Tudo é desenhado por código (Canvas), sem depender de imagens ou vídeos.
+ *
+ * A animação roda quadro a quadro (via postOnAnimation) e só termina de
+ * verdade quando todas as partículas já foram "engolidas" — não em um
+ * tempo fixo, para evitar cortar a animação com partículas ainda na tela.
+ * Existe um teto de segurança para não travar caso alguma partícula nunca
+ * chegue ao centro.
  */
 class BlackHoleView @JvmOverloads constructor(
     context: Context,
@@ -44,35 +47,49 @@ class BlackHoleView @JvmOverloads constructor(
 
     private var raioBuraco = 0f
     private var raioMaximoBuraco = 0f
-    private var animador: ValueAnimator? = null
+
+    private var tempoDecorridoMs = 0L
     private var ultimoTempoMs = 0L
-    private var progresso = 0f
+    private var animando = false
+    private var callbackFinal: (() -> Unit)? = null
 
-    private val duracaoTotalMs = 2200L
+    private val duracaoCrescimentoMs = 900L
+    private val duracaoMaximaMs = 4500L
 
-    /** Começa a animação. [aoFinalizar] é chamado quando ela termina. */
+    private val loop = object : Runnable {
+        override fun run() {
+            if (!animando) return
+
+            val agora = System.currentTimeMillis()
+            val deltaMs = (agora - ultimoTempoMs).coerceAtLeast(1)
+            ultimoTempoMs = agora
+            tempoDecorridoMs += deltaMs
+
+            raioBuraco = raioMaximoBuraco * (tempoDecorridoMs.toFloat() / duracaoCrescimentoMs).coerceIn(0f, 1f)
+            atualizarParticulas(deltaMs / 1000f)
+            invalidate()
+
+            val terminouDeVerdade = particulas.isEmpty() && tempoDecorridoMs >= duracaoCrescimentoMs
+            val estourouTempoMaximo = tempoDecorridoMs >= duracaoMaximaMs
+
+            if (terminouDeVerdade || estourouTempoMaximo) {
+                animando = false
+                callbackFinal?.invoke()
+            } else {
+                postOnAnimation(this)
+            }
+        }
+    }
+
+    /** Começa a animação. [aoFinalizar] é chamado quando ela termina de verdade. */
     fun iniciarAnimacao(aoFinalizar: () -> Unit) {
+        callbackFinal = aoFinalizar
         post {
             criarParticulas()
+            tempoDecorridoMs = 0L
             ultimoTempoMs = System.currentTimeMillis()
-            animador?.cancel()
-            animador = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = duracaoTotalMs
-                addUpdateListener { animatorValor ->
-                    val agora = System.currentTimeMillis()
-                    val deltaMs = (agora - ultimoTempoMs).coerceAtLeast(1)
-                    ultimoTempoMs = agora
-                    progresso = animatorValor.animatedValue as Float
-                    atualizarParticulas(deltaMs / 1000f)
-                    invalidate()
-                }
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        aoFinalizar()
-                    }
-                })
-                start()
-            }
+            animando = true
+            postOnAnimation(loop)
         }
     }
 
@@ -96,8 +113,6 @@ class BlackHoleView @JvmOverloads constructor(
     }
 
     private fun atualizarParticulas(deltaSegundos: Float) {
-        raioBuraco = raioMaximoBuraco * progresso
-
         val iterador = particulas.iterator()
         while (iterador.hasNext()) {
             val p = iterador.next()
