@@ -113,7 +113,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Botão limpar cache -->
+        <!-- Botão limpar cache do próprio app -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLimparCache"
             android:layout_width="match_parent"
@@ -123,6 +123,102 @@
             android:backgroundTint="@color/accent"
             app:cornerRadius="14dp"
             android:layout_marginBottom="12dp" />
+
+        <!-- Botão limpar cache de todos os apps -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLimparCacheTodos"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Limpar cache de todos os apps"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/accent"
+            app:cornerRadius="14dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Botão fechar apps em segundo plano -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFecharSegundoPlano"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Fechar apps em segundo plano"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/primary"
+            app:cornerRadius="14dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Botão modo jogo -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnModoJogo"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Ativar Modo Jogo (bloquear notificações)"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/primary_dark"
+            app:cornerRadius="14dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Card de dicas de desempenho -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="3dp"
+            android:layout_marginBottom="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dicas para melhorar o desempenho"
+                    android:textColor="@color/text_dark"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_gray"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="• Reinicie o celular pelo menos uma vez por semana\n• Mantenha ao menos 10% do armazenamento livre\n• Desinstale apps que você não usa há meses\n• Reduza o número de widgets na tela inicial\n• Mantenha os apps atualizados (correções de desempenho)\n• Evite usar muitos apps 'limpadores de RAM' ao mesmo tempo — eles competem entre si e pioram o problema" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Barra do modo de limpeza de cache -->
+        <LinearLayout
+            android:id="@+id/barraModoLimpeza"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/accent"
+            android:padding="12dp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Modo limpeza: toque em um app, limpe o cache e volte"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConcluirLimpeza"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Concluir"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+        </LinearLayout>
 
         <!-- Botão gerenciar apps -->
         <com.google.android.material.button.MaterialButton
